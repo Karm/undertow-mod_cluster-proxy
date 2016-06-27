@@ -2,7 +2,7 @@ FROM fedora:24
 MAINTAINER Michal Karm Babacek <karm@email.cz>
 LABEL description="Undertow mod_cluster proxy example"
 
-ENV DEPS            java-1.8.0-openjdk-devel.x86_64 unzip wget find jna.x86_64 jsch-agent-proxy-usocket-jna.noarch
+ENV DEPS            java-1.8.0-openjdk-devel.x86_64 unzip wget find gawk coreutils jna.x86_64 jsch-agent-proxy-usocket-jna.noarch
 ENV JBOSS_HOME      "/opt/balancer/wildfly"
 ENV JAVA_HOME       "/usr/lib/jvm/java-1.8.0"
 
