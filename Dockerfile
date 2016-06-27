@@ -52,7 +52,8 @@ advertise-socket-binding=mod-cluster-adv,management-socket-binding=http)" && \
 # Add that filter to the server
 ${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands="/subsystem=undertow/server=default-server/host=default-host/filter-ref=modcluster:add()" && \
 # That's all we do here. The rest of the configuration is runtime dependent and it is done in balancer.sh
-${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=:shutdown
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=:shutdown && \
+rm -rf ${JBOSS_HOME}/standalone/configuration/standalone_xml_*
 
 ADD balancer.sh /opt/balancer/
 CMD ["/opt/balancer/balancer.sh"]

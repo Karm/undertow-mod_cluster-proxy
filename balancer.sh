@@ -62,7 +62,7 @@ while ((`grep -c "stopped in" ${JBOSS_HOME}/standalone/log/server.log` <= 0 && $
      echo Waiting for Wildfly shutdown...; sleep 1; let TIMEOUT=$TIMEOUT-1;
 done; 
 if (( $TIMEOUT == 0 )); then echo "Wildfly shutdown failed. We cannot continue."; exit 1; fi
-
+rm -rf ${JBOSS_HOME}/standalone/configuration/standalone_xml_*
 
 # Start the server
 ${JBOSS_HOME}/bin/standalone.sh \
