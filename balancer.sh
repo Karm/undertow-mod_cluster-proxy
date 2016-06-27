@@ -9,16 +9,16 @@ echo "STAT ${BALANCER_NIC:-eth0}: `networkctl status ${BALANCER_NIC:-eth0}`" | t
 # Wait for the interface to wake up
 TIMEOUT=20
 MYIP=""
-while (( "${MYIP}X" == "X" && "${TIMEOUT}" > 0 )); do
+while [[ "${MYIP}X" == "X" ]] && (( "${TIMEOUT}" > 0 )); do
     echo "Loop ${TIMEOUT}" | tee /opt/balancer/ip.log
-    MYIP="`networkctl status ${BALANCER_NIC:-eth0} | awk '{if($1~/Address:/){printf($2);}}'` | tr -d '[[:space:]]'"
+    MYIP="`networkctl status ${BALANCER_NIC:-eth0} | awk '{if($1~/Address:/){printf($2);}}' | tr -d '[[:space:]]'`"
     export MYIP
     echo "MYIP is $MYIP" | tee /opt/balancer/ip.log
     let TIMEOUT=$TIMEOUT-1
-    if (( "${MYIP}X" != "X" )); then break; else sleep 1; fi
+    if [[ "${MYIP}X" != "X" ]]; then break; else sleep 1; fi
 done
 echo -e "MYIP: ${MYIP}\nMYNIC: ${BALANCER_NIC:-eth0}" | tee /opt/balancer/ip.log
-if (( "${MYIP}X" == "X" )); then 
+if [[ "${MYIP}X" == "X" ]]; then 
     echo "${BALANCER_NIC:-eth0} Interface error. " | tee /opt/balancer/ip.log
     exit 1
 fi
@@ -41,17 +41,21 @@ export JAVA_OPTS="-server \
                   -XX:+HeapDumpOnOutOfMemoryError \
                   -XX:HeapDumpPath=/opt/balancer"
 
-${JBOSS_HOME}/bin/standalone.sh --admin-only &
+${JBOSS_HOME}/bin/standalone.sh \
+ --admin-only \
+ -Djava.net.preferIPv4Stack=true \
+ -Djboss.bind.address.management=${MYIP} &
 TIMEOUT=5
 while ((`grep -c "started in" ${JBOSS_HOME}/standalone/log/server.log` <= 0 && ${TIMEOUT} > 0 )); do
     echo Waiting for Wildfly startup...; sleep 1; let TIMEOUT=$TIMEOUT-1;
 done; 
 if (( $TIMEOUT == 0 )); then echo "Wildfly startup failed. We cannot continue."; exit 1; fi
 
-${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=/interface=public:write-attribute(name=nic,value="${BALANCER_NIC:-eth0}")
-${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level,value=${BALANCER_LOGLEVEL:-INFO})
-${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=/subsystem=logging/root-logger=ROOT:write-attribute(name=level,value=${BALANCER_LOGLEVEL:-INFO})
-${JBOSS_HOME}/bin/jboss-cli.sh --connect --commands=:shutdown
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --controller=${MYIP} --commands="/interface=public:write-attribute(name=nic,value=${BALANCER_NIC:-eth0})"
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --controller=${MYIP} --commands="/interface=management:write-attribute(name=nic,value=${BALANCER_NIC:-eth0})"
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --controller=${MYIP} --commands="/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level,value=${BALANCER_LOGLEVEL:-INFO})"
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --controller=${MYIP} --commands="/subsystem=logging/root-logger=ROOT:write-attribute(name=level,value=${BALANCER_LOGLEVEL:-INFO})"
+${JBOSS_HOME}/bin/jboss-cli.sh --connect --controller=${MYIP} --commands=:shutdown
 
 TIMEOUT=5
 while ((`grep -c "stopped in" ${JBOSS_HOME}/standalone/log/server.log` <= 0 && ${TIMEOUT} > 0 )); do
@@ -65,6 +69,7 @@ ${JBOSS_HOME}/bin/standalone.sh \
  -c standalone.xml \
  -Djava.net.preferIPv4Stack=true \
  -Djboss.bind.address=${MYIP} \
+ -Djboss.bind.address.management=${MYIP} \
  -Djboss.node.name="${CONTAINER_NAME}" \
  -Djboss.host.name="${DOCKERCLOUD_CONTAINER_FQDN}" \
  -Djboss.qualified.host.name="${DOCKERCLOUD_CONTAINER_FQDN}"
